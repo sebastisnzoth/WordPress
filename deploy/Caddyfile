@@ -1,0 +1,14 @@
+{$SITE_DOMAIN} {
+    encode zstd gzip
+    @sensitive path /wp-config.php /.env /.git/* /xmlrpc.php
+    respond @sensitive 403
+    reverse_proxy wordpress:80 {
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-Host {host}
+    }
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+}
