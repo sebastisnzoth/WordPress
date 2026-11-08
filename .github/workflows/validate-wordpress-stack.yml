@@ -1,0 +1,34 @@
+name: Validate DROPERAGENT WordPress online stack
+on:
+  push:
+    paths:
+      - 'deploy/**'
+      - '.github/workflows/validate-wordpress-stack.yml'
+  pull_request:
+    paths:
+      - 'deploy/**'
+      - '.github/workflows/validate-wordpress-stack.yml'
+permissions:
+  contents: read
+jobs:
+  compose-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Docker Compose configuration
+        working-directory: deploy
+        env:
+          SITE_DOMAIN: wordpress-ci.example.invalid
+          DB_PASSWORD: ci-only-not-a-real-password
+          DB_ROOT_PASSWORD: ci-only-not-a-real-root-password
+        run: |
+          docker compose config --quiet
+          docker compose config --services | grep -qx wordpress
+          docker compose config --services | grep -qx database
+          docker compose config --services | grep -qx https
+      - name: Verify no production credentials or destructive scripts
+        run: |
+          test ! -e deploy/.env
+          test ! -e deploy/wp-config.php
+          ! grep -RE 'docker compose down -v|service_role|sk_live_' deploy/compose.yaml deploy/Caddyfile
+          bash -n deploy/backup.sh
